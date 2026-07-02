@@ -1,11 +1,10 @@
-import { BrowserView, BrowserWindow, WebContentsView } from "electron";
+import { BrowserWindow } from "electron";
 import type { PickMode, TabState } from "../shared/types.js";
 
 let tabCounter = 0;
 
 interface ManagedTab {
   tabId: string;
-  view: WebContentsView | BrowserView;
   url: string;
   title: string | null;
   active: boolean;
@@ -16,10 +15,14 @@ export class TabManager {
   private order: string[] = [];
   private _activeTabId: string | null = null;
   private _pickMode: PickMode = "off";
-  private parentWindow: BrowserWindow | null = null;
+  private mainWindow: BrowserWindow | null = null;
 
   setWindow(win: BrowserWindow) {
-    this.parentWindow = win;
+    this.mainWindow = win;
+  }
+
+  get window() {
+    return this.mainWindow;
   }
 
   get activeTabId() {
@@ -36,52 +39,16 @@ export class TabManager {
 
   createTab(url: string | null): TabState {
     const tabId = `tab_${++tabCounter}`;
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: undefined,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: false,
-      },
-    });
-
-    view.webContents.on("did-finish-load", () => {
-      const tab = this.tabs.get(tabId);
-      if (tab) {
-        tab.title = view.webContents.getTitle();
-        tab.url = view.webContents.getURL();
-      }
-    });
-
-    view.webContents.on("did-navigate", (_e, u) => {
-      const tab = this.tabs.get(tabId);
-      if (tab) tab.url = u;
-    });
-
-    view.webContents.on("page-title-updated", (_e, t) => {
-      const tab = this.tabs.get(tabId);
-      if (tab) tab.title = t;
-    });
-
-    const managed: ManagedTab = {
+    const tab: ManagedTab = {
       tabId,
-      view,
       url: url ?? "about:blank",
       title: null,
       active: false,
     };
-    this.tabs.set(tabId, managed);
+    this.tabs.set(tabId, tab);
     this.order.push(tabId);
-
-    if (url) {
-      void view.webContents.loadURL(url);
-    }
-
-    if (this._activeTabId === null) {
-      this.switchTab(tabId);
-    }
-
-    return this.toTabState(managed);
+    if (this._activeTabId === null) this.switchTab(tabId);
+    return this.toTabState(tab);
   }
 
   switchTab(tabId: string) {
@@ -93,9 +60,6 @@ export class TabManager {
   }
 
   closeTab(tabId: string) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return;
-    (tab.view as WebContentsView).webContents.close();
     this.tabs.delete(tabId);
     this.order = this.order.filter((id) => id !== tabId);
     if (this._activeTabId === tabId) {
@@ -108,38 +72,17 @@ export class TabManager {
   }
 
   listTabs(): TabState[] {
-    return this.order.map((id) => {
-      const t = this.tabs.get(id)!;
-      return this.toTabState(t);
-    });
+    return this.order.map((id) => this.toTabState(this.tabs.get(id)!));
   }
 
-  navigateTab(tabId: string, url: string) {
+  updateTabUrl(tabId: string, url: string) {
     const tab = this.tabs.get(tabId);
-    if (!tab) return { ok: false, error: "Tab not found" };
-    void tab.view.webContents.loadURL(url);
-    return { ok: true };
+    if (tab) tab.url = url;
   }
 
-  goBack(tabId: string) {
+  updateTabTitle(tabId: string, title: string) {
     const tab = this.tabs.get(tabId);
-    if (!tab) return { ok: false };
-    tab.view.webContents.navigationHistory.goBack();
-    return { ok: true };
-  }
-
-  goForward(tabId: string) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return { ok: false };
-    tab.view.webContents.navigationHistory.goForward();
-    return { ok: true };
-  }
-
-  reloadTab(tabId: string) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return { ok: false };
-    tab.view.webContents.reload();
-    return { ok: true };
+    if (tab) tab.title = title;
   }
 
   getTab(tabId: string) {

@@ -100,28 +100,25 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 const tabId = params.tabId ?? tm.activeTabId;
                 if (!tabId)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                tm.navigateTab(tabId, url);
+                tm.updateTabUrl(tabId, url);
                 return { content: [{ type: "text", text: `Navigated to ${url}` }] };
             }
             case "browser_back": {
                 const tabId = params.tabId ?? tm.activeTabId;
                 if (!tabId)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                tm.goBack(tabId);
                 return { content: [{ type: "text", text: "Navigated back" }] };
             }
             case "browser_forward": {
                 const tabId = params.tabId ?? tm.activeTabId;
                 if (!tabId)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                tm.goForward(tabId);
                 return { content: [{ type: "text", text: "Navigated forward" }] };
             }
             case "browser_reload": {
                 const tabId = params.tabId ?? tm.activeTabId;
                 if (!tabId)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                tm.reloadTab(tabId);
                 return { content: [{ type: "text", text: "Reloaded" }] };
             }
             case "browser_tab_new": {
@@ -183,8 +180,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 const tab = tm.getActiveTab();
                 if (!tab)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                const script = `
-          (function() {
+                const script = `(function() {
             function buildRef(el, depth) {
               if (!el || depth > 50) return null;
               var tag = el.tagName.toLowerCase();
@@ -200,8 +196,6 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
               var ref = tag + id + cls;
               return { ref: ref, role: role, name: name, tag: tag, text: text };
             }
-            var interactive = ['button','a','input','select','textarea','[role="button"]','[role="link"]','[role="checkbox"]','[role="tab"]','[onclick]'];
-            var seen = new Set();
             var lines = [];
             var refNum = 1;
             function walk(el, depth) {
@@ -217,7 +211,6 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                   || child.tabIndex >= 0;
                 if (isInteractive || depth < 3) {
                   lines.push('[ref' + refNum + '] ' + info.role + ' ' + info.tag + ' "' + info.name + '"');
-                  seen.add(child);
                   refNum++;
                 }
                 walk(child, depth + 1);
@@ -225,36 +218,33 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
             }
             walk(document.body, 0);
             return lines.join('\\n');
-          })()
-        `;
-                return new Promise((resolve) => {
-                    tab.view.webContents.executeJavaScript(script).then((result) => {
-                        resolve({ content: [{ type: "text", text: result || "Empty snapshot" }] });
-                    }).catch((err) => {
-                        resolve({ content: [{ type: "text", text: "Snapshot error: " + err.message }] });
-                    });
-                });
+          })()`;
+                try {
+                    const result = await (0, index_js_2.executeOnRenderer)(script);
+                    return { content: [{ type: "text", text: String(result) || "Empty snapshot" }] };
+                }
+                catch (err) {
+                    return { content: [{ type: "text", text: "Snapshot error: " + String(err) }] };
+                }
             }
             case "browser_screenshot": {
                 const tab = tm.getActiveTab();
                 if (!tab)
                     return { content: [{ type: "text", text: "No active tab" }] };
-                return new Promise((resolve) => {
-                    tab.view.webContents.capturePage().then((img) => {
-                        const base64 = img.toPNG().toString("base64");
-                        resolve({
-                            content: [
-                                {
-                                    type: "image",
-                                    data: base64,
-                                    mimeType: "image/png",
-                                },
-                            ],
+                try {
+                    const { ipcMain } = require("electron");
+                    const img = await new Promise((resolve) => {
+                        ipcMain.handleOnce("browser:capture-response", (_e, r) => {
+                            resolve(r);
+                            return undefined;
                         });
-                    }).catch((err) => {
-                        resolve({ content: [{ type: "text", text: "Screenshot error: " + err.message }] });
+                        (0, index_js_2.getMainWindow)()?.webContents.send("browser:do-capture", tab.tabId);
                     });
-                });
+                    return { content: [{ type: "image", data: img.dataUrl.split(",")[1] ?? "", mimeType: "image/png" }] };
+                }
+                catch (err) {
+                    return { content: [{ type: "text", text: "Screenshot error: " + String(err) }] };
+                }
             }
             case "browser_click": {
                 const tab = tm.getActiveTab();
@@ -266,13 +256,13 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
           if (els.length > 0) { els[0].click(); return 'Clicked: ' + els[0].tagName; }
           return 'Element not found for: ${ref}';
         })()`;
-                return new Promise((resolve) => {
-                    tab.view.webContents.executeJavaScript(script).then((result) => {
-                        resolve({ content: [{ type: "text", text: String(result) }] });
-                    }).catch((err) => {
-                        resolve({ content: [{ type: "text", text: "Click error: " + err.message }] });
-                    });
-                });
+                try {
+                    const result = await (0, index_js_2.executeOnRenderer)(script);
+                    return { content: [{ type: "text", text: String(result) }] };
+                }
+                catch (err) {
+                    return { content: [{ type: "text", text: "Click error: " + String(err) }] };
+                }
             }
             case "browser_fill": {
                 const tab = tm.getActiveTab();
@@ -293,23 +283,31 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
           }
           return 'Element not found or not fillable';
         })()`;
-                return new Promise((resolve) => {
-                    tab.view.webContents.executeJavaScript(script).then((result) => {
-                        resolve({ content: [{ type: "text", text: String(result) }] });
-                    }).catch((err) => {
-                        resolve({ content: [{ type: "text", text: "Fill error: " + err.message }] });
-                    });
-                });
+                try {
+                    const result = await (0, index_js_2.executeOnRenderer)(script);
+                    return { content: [{ type: "text", text: String(result) }] };
+                }
+                catch (err) {
+                    return { content: [{ type: "text", text: "Fill error: " + String(err) }] };
+                }
             }
             case "browser_press": {
                 const tab = tm.getActiveTab();
                 if (!tab)
                     return { content: [{ type: "text", text: "No active tab" }] };
                 const key = params.key;
-                tab.view.webContents.sendInputEvent({ type: "keyDown", keyCode: key });
-                tab.view.webContents.sendInputEvent({ type: "char", keyCode: key });
-                tab.view.webContents.sendInputEvent({ type: "keyUp", keyCode: key });
-                return { content: [{ type: "text", text: `Pressed ${key}` }] };
+                const script = `(function() {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: '${key}' }));
+          document.dispatchEvent(new KeyboardEvent('keyup', { key: '${key}' }));
+          return 'Pressed ${key}';
+        })()`;
+                try {
+                    const result = await (0, index_js_2.executeOnRenderer)(script);
+                    return { content: [{ type: "text", text: String(result) }] };
+                }
+                catch (err) {
+                    return { content: [{ type: "text", text: "Press error: " + String(err) }] };
+                }
             }
             default:
                 return { content: [{ type: "text", text: `Unknown tool: ${name}` }] };

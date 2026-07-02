@@ -1,16 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TabManager = void 0;
-const electron_1 = require("electron");
 let tabCounter = 0;
 class TabManager {
     tabs = new Map();
     order = [];
     _activeTabId = null;
     _pickMode = "off";
-    parentWindow = null;
+    mainWindow = null;
     setWindow(win) {
-        this.parentWindow = win;
+        this.mainWindow = win;
+    }
+    get window() {
+        return this.mainWindow;
     }
     get activeTabId() {
         return this._activeTabId;
@@ -23,47 +25,17 @@ class TabManager {
     }
     createTab(url) {
         const tabId = `tab_${++tabCounter}`;
-        const view = new electron_1.WebContentsView({
-            webPreferences: {
-                preload: undefined,
-                contextIsolation: true,
-                nodeIntegration: false,
-                sandbox: false,
-            },
-        });
-        view.webContents.on("did-finish-load", () => {
-            const tab = this.tabs.get(tabId);
-            if (tab) {
-                tab.title = view.webContents.getTitle();
-                tab.url = view.webContents.getURL();
-            }
-        });
-        view.webContents.on("did-navigate", (_e, u) => {
-            const tab = this.tabs.get(tabId);
-            if (tab)
-                tab.url = u;
-        });
-        view.webContents.on("page-title-updated", (_e, t) => {
-            const tab = this.tabs.get(tabId);
-            if (tab)
-                tab.title = t;
-        });
-        const managed = {
+        const tab = {
             tabId,
-            view,
             url: url ?? "about:blank",
             title: null,
             active: false,
         };
-        this.tabs.set(tabId, managed);
+        this.tabs.set(tabId, tab);
         this.order.push(tabId);
-        if (url) {
-            void view.webContents.loadURL(url);
-        }
-        if (this._activeTabId === null) {
+        if (this._activeTabId === null)
             this.switchTab(tabId);
-        }
-        return this.toTabState(managed);
+        return this.toTabState(tab);
     }
     switchTab(tabId) {
         const tab = this.tabs.get(tabId);
@@ -75,10 +47,6 @@ class TabManager {
         this._activeTabId = tabId;
     }
     closeTab(tabId) {
-        const tab = this.tabs.get(tabId);
-        if (!tab)
-            return;
-        tab.view.webContents.close();
         this.tabs.delete(tabId);
         this.order = this.order.filter((id) => id !== tabId);
         if (this._activeTabId === tabId) {
@@ -91,38 +59,17 @@ class TabManager {
         }
     }
     listTabs() {
-        return this.order.map((id) => {
-            const t = this.tabs.get(id);
-            return this.toTabState(t);
-        });
+        return this.order.map((id) => this.toTabState(this.tabs.get(id)));
     }
-    navigateTab(tabId, url) {
+    updateTabUrl(tabId, url) {
         const tab = this.tabs.get(tabId);
-        if (!tab)
-            return { ok: false, error: "Tab not found" };
-        void tab.view.webContents.loadURL(url);
-        return { ok: true };
+        if (tab)
+            tab.url = url;
     }
-    goBack(tabId) {
+    updateTabTitle(tabId, title) {
         const tab = this.tabs.get(tabId);
-        if (!tab)
-            return { ok: false };
-        tab.view.webContents.navigationHistory.goBack();
-        return { ok: true };
-    }
-    goForward(tabId) {
-        const tab = this.tabs.get(tabId);
-        if (!tab)
-            return { ok: false };
-        tab.view.webContents.navigationHistory.goForward();
-        return { ok: true };
-    }
-    reloadTab(tabId) {
-        const tab = this.tabs.get(tabId);
-        if (!tab)
-            return { ok: false };
-        tab.view.webContents.reload();
-        return { ok: true };
+        if (tab)
+            tab.title = title;
     }
     getTab(tabId) {
         return this.tabs.get(tabId) ?? null;

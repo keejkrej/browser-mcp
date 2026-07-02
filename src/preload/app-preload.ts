@@ -37,6 +37,8 @@ export interface ApiBridge {
   tabReload: (tabId: string) => Promise<unknown>;
   setPickMode: (mode: "select" | "annotate" | "off") => Promise<unknown>;
   capturePage: (tabId: string) => Promise<{ dataUrl: string; width: number; height: number }>;
+  updateTabUrl: (tabId: string, url: string) => Promise<unknown>;
+  updateTabTitle: (tabId: string, title: string) => Promise<unknown>;
   onPickStart: (cb: () => void) => void;
   onPickCancel: (cb: () => void) => void;
   onSetPickMode: (cb: (mode: "select" | "annotate" | "off") => void) => void;
@@ -47,6 +49,10 @@ export interface ApiBridge {
   onDoTabNew: (cb: (url?: string) => void) => void;
   onDoTabSwitch: (cb: (tabId: string) => void) => void;
   onDoTabClose: (cb: (tabId: string) => void) => void;
+  onDoCapture: (cb: (tabId: string) => void) => void;
+  onDoExecute: (cb: (script: string) => void) => void;
+  sendCaptureResponse: (data: unknown) => void;
+  sendExecuteResponse: (data: unknown) => void;
   onElementPicked: (cb: (payload: unknown) => void) => void;
   onAnnotationSubmitted: (cb: (payload: unknown) => void) => void;
   sendPickResult: (payload: unknown) => Promise<unknown>;
@@ -64,6 +70,8 @@ const api: ApiBridge = {
   tabReload: (tabId: string) => ipcRenderer.invoke(IPC.TAB_RELOAD, tabId),
   setPickMode: (mode) => ipcRenderer.invoke(IPC.PICK_MODE, mode),
   capturePage: (tabId: string) => ipcRenderer.invoke(IPC.CAPTURE_PAGE, tabId),
+  updateTabUrl: (tabId: string, url: string) => ipcRenderer.invoke("browser:tab-url-update", tabId, url),
+  updateTabTitle: (tabId: string, title: string) => ipcRenderer.invoke("browser:tab-title-update", tabId, title),
   onPickStart: (cb) => ipcRenderer.on(IPC.PICK_START, () => cb()),
   onPickCancel: (cb) => ipcRenderer.on(IPC.PICK_CANCEL, () => cb()),
   onSetPickMode: (cb) => ipcRenderer.on(IPC.SET_PICK_MODE, (_e, mode) => cb(mode)),
@@ -74,6 +82,10 @@ const api: ApiBridge = {
   onDoTabNew: (cb) => ipcRenderer.on(IPC.DO_TAB_NEW, (_e, url) => cb(url)),
   onDoTabSwitch: (cb) => ipcRenderer.on(IPC.DO_TAB_SWITCH, (_e, tabId) => cb(tabId)),
   onDoTabClose: (cb) => ipcRenderer.on(IPC.DO_TAB_CLOSE, (_e, tabId) => cb(tabId)),
+  onDoCapture: (cb) => ipcRenderer.on("browser:do-capture", (_e, tabId) => cb(tabId)),
+  onDoExecute: (cb) => ipcRenderer.on("browser:do-execute", (_e, script) => cb(script)),
+  sendCaptureResponse: (data) => ipcRenderer.send("browser:capture-response", data),
+  sendExecuteResponse: (data) => ipcRenderer.send("browser:execute-response", data),
   onElementPicked: (cb) => ipcRenderer.on("browser:element-picked", (_e, payload) => cb(payload)),
   onAnnotationSubmitted: (cb) => ipcRenderer.on("browser:annotation-submitted", (_e, payload) => cb(payload)),
   sendPickResult: (payload) => ipcRenderer.invoke(IPC.PICK_RESULT, payload),

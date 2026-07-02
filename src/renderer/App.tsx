@@ -16,9 +16,15 @@ interface BrowserApi {
   tabReload: (tabId: string) => Promise<unknown>;
   setPickMode: (mode: PickMode) => Promise<unknown>;
   capturePage: (tabId: string) => Promise<{ dataUrl: string; width: number; height: number }>;
+  updateTabUrl: (tabId: string, url: string) => Promise<unknown>;
+  updateTabTitle: (tabId: string, title: string) => Promise<unknown>;
   onPickStart: (cb: () => void) => void;
   onPickCancel: (cb: () => void) => void;
   onSetPickMode: (cb: (mode: PickMode) => void) => void;
+  onDoCapture: (cb: (tabId: string) => void) => void;
+  onDoExecute: (cb: (script: string) => void) => void;
+  sendCaptureResponse: (data: { dataUrl: string; width: number; height: number }) => void;
+  sendExecuteResponse: (data: unknown) => void;
   onElementPicked: (cb: (payload: PickedElement) => void) => void;
   onAnnotationSubmitted: (cb: (payload: Annotation) => void) => void;
   sendPickResult: (payload: PickedElement) => Promise<unknown>;
@@ -85,7 +91,28 @@ export function App() {
       setPickModeState("off");
       pickModeRef.current = "off";
     });
-  }, []);
+    // Handle capture/execute requests from MCP tools via main process
+    api.onDoCapture(async (tabId: string) => {
+      const wv = webviewRefs.current.get(tabId) as ElectronWebview & { capturePage?: () => Promise<{ toDataURL: () => string; getSize: () => { width: number; height: number } }> };
+      if (!wv || !wv.capturePage) { api.sendCaptureResponse({ dataUrl: "", width: 0, height: 0 }); return; }
+      try {
+        const img = await wv.capturePage();
+        api.sendCaptureResponse({ dataUrl: img.toDataURL(), width: img.getSize().width, height: img.getSize().height });
+      } catch {
+        api.sendCaptureResponse({ dataUrl: "", width: 0, height: 0 });
+      }
+    });
+    api.onDoExecute(async (script: string) => {
+      const activeWv = activeTabId ? webviewRefs.current.get(activeTabId) : null;
+      if (!activeWv) { api.sendExecuteResponse(null); return; }
+      try {
+        const result = await activeWv.executeJavaScript(script);
+        api.sendExecuteResponse(result);
+      } catch (err) {
+        api.sendExecuteResponse(String(err));
+      }
+    });
+  }, [activeTabId]);
 
   // Handle element picks from webview
   useEffect(() => {
@@ -243,6 +270,16 @@ export function App() {
                 const wv = node as ElectronWebview | null;
                 if (wv) {
                   webviewRefs.current.set(tab.tabId, wv);
+                  wv.addEventListener("did-navigate", (e: unknown) => {
+                    const ev = e as { url: string };
+                    void api.updateTabUrl(tab.tabId, ev.url);
+                    void refreshTabs();
+                  });
+                  wv.addEventListener("page-title-updated", (e: unknown) => {
+                    const ev = e as { title: string };
+                    void api.updateTabTitle(tab.tabId, ev.title);
+                    void refreshTabs();
+                  });
                 } else {
                   webviewRefs.current.delete(tab.tabId);
                 }
