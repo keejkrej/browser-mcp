@@ -1,0 +1,48 @@
+{
+  "name": "@anthropic-ai/browser-mcp",
+  "version": "0.1.0",
+  "description": "Electron browser app with MCP server for element picking and annotation",
+  "main": "dist/main/index.js",
+  "bin": {
+    "browser-mcp": "src/cli.cjs"
+  },
+  "files": [
+    "dist/main",
+    "dist/preload",
+    "dist/renderer",
+    "dist/shared",
+    "src/cli.cjs"
+  ],
+  "scripts": {
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:preload": "tsc -p tsconfig.preload.json",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "dev": "concurrently \"pnpm dev:main\" \"pnpm dev:renderer\"",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:preload": "tsc -p tsconfig.preload.json --watch",
+    "dev:renderer": "vite dev",
+    "start": "electron .",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "lucide-react": "^1.23.0"
+  },
+  "peerDependencies": {
+    "electron": "^34.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules
+src/main
+src/preload
+src/renderer
+src/shared
+tsconfig*.json
+vite.config.ts
+pnpm-workspace.yaml
+pnpm-lock.yaml
+.github
+.vscode
+*.test.ts
+*.test.tsx
