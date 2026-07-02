@@ -28,9 +28,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
   },
-  "peerDependencies": {
-    "electron": "^34.0.0"
-  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
