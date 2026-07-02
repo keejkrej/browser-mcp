@@ -23,8 +23,7 @@
     "dev:preload": "tsc -p tsconfig.preload.json --watch",
     "dev:renderer": "vite dev",
     "start": "electron .",
-    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.json --noEmit",
-    "prepare": "npm run build"
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
