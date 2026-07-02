@@ -51,6 +51,7 @@ export interface ApiBridge {
   onDoTabClose: (cb: (tabId: string) => void) => void;
   onDoCapture: (cb: (tabId: string) => void) => void;
   onDoExecute: (cb: (script: string) => void) => void;
+  onDoNavigateWebview: (cb: (tabId: string, url: string) => void) => void;
   sendCaptureResponse: (data: unknown) => void;
   sendExecuteResponse: (data: unknown) => void;
   onElementPicked: (cb: (payload: unknown) => void) => void;
@@ -84,6 +85,7 @@ const api: ApiBridge = {
   onDoTabClose: (cb) => ipcRenderer.on(IPC.DO_TAB_CLOSE, (_e, tabId) => cb(tabId)),
   onDoCapture: (cb) => ipcRenderer.on("browser:do-capture", (_e, tabId) => cb(tabId)),
   onDoExecute: (cb) => ipcRenderer.on("browser:do-execute", (_e, script) => cb(script)),
+  onDoNavigateWebview: (cb) => ipcRenderer.on("browser:do-navigate", (_e, tabId, url) => cb(tabId, url)),
   sendCaptureResponse: (data) => ipcRenderer.send("browser:capture-response", data),
   sendExecuteResponse: (data) => ipcRenderer.send("browser:execute-response", data),
   onElementPicked: (cb) => ipcRenderer.on("browser:element-picked", (_e, payload) => cb(payload)),

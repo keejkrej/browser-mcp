@@ -23,6 +23,7 @@ interface BrowserApi {
   onSetPickMode: (cb: (mode: PickMode) => void) => void;
   onDoCapture: (cb: (tabId: string) => void) => void;
   onDoExecute: (cb: (script: string) => void) => void;
+  onDoNavigateWebview: (cb: (tabId: string, url: string) => void) => void;
   sendCaptureResponse: (data: { dataUrl: string; width: number; height: number }) => void;
   sendExecuteResponse: (data: unknown) => void;
   onElementPicked: (cb: (payload: PickedElement) => void) => void;
@@ -112,6 +113,10 @@ export function App() {
         api.sendExecuteResponse(String(err));
       }
     });
+    api.onDoNavigateWebview(async (tabId: string, url: string) => {
+      const wv = webviewRefs.current.get(tabId);
+      if (wv) wv.src = url;
+    });
   }, [activeTabId]);
 
   // Handle element picks from webview
@@ -160,10 +165,16 @@ export function App() {
   }, [refreshTabs]);
 
   const handleNavigate = useCallback(async (url: string) => {
-    if (!activeTabId) {
+    let targetTabId = activeTabId;
+    if (!targetTabId) {
+      // No tabs open: create one with the URL
       await api.tabNew(url);
+      targetTabId = null; // refreshTabs will pick up the new active tab
     } else {
-      await api.tabNavigate(activeTabId, url);
+      // Existing tab: update state AND set the webview src directly
+      await api.tabNavigate(targetTabId, url);
+      const wv = webviewRefs.current.get(targetTabId);
+      if (wv) wv.src = url;
     }
     await refreshTabs();
   }, [activeTabId, refreshTabs]);
@@ -270,6 +281,10 @@ export function App() {
                 const wv = node as ElectronWebview | null;
                 if (wv) {
                   webviewRefs.current.set(tab.tabId, wv);
+                  // Set src imperatively so URL changes trigger navigation
+                  if (wv.src !== tab.url && tab.url !== "about:blank") {
+                    wv.src = tab.url;
+                  }
                   wv.addEventListener("did-navigate", (e: unknown) => {
                     const ev = e as { url: string };
                     void api.updateTabUrl(tab.tabId, ev.url);

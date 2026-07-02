@@ -103,6 +103,10 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 if (!tabId)
                     return { content: [{ type: "text", text: "No active tab" }] };
                 tm.updateTabUrl(tabId, url);
+                // Tell the renderer to set the webview src
+                const win = (0, index_js_2.getMainWindow)();
+                if (win)
+                    win.webContents.send("browser:do-navigate", tabId, url);
                 return { content: [{ type: "text", text: `Navigated to ${url}` }] };
             }
             case "browser_back": {

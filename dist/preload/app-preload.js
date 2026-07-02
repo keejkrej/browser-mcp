@@ -51,6 +51,7 @@ const api = {
     onDoTabClose: (cb) => electron_1.ipcRenderer.on(IPC.DO_TAB_CLOSE, (_e, tabId) => cb(tabId)),
     onDoCapture: (cb) => electron_1.ipcRenderer.on("browser:do-capture", (_e, tabId) => cb(tabId)),
     onDoExecute: (cb) => electron_1.ipcRenderer.on("browser:do-execute", (_e, script) => cb(script)),
+    onDoNavigateWebview: (cb) => electron_1.ipcRenderer.on("browser:do-navigate", (_e, tabId, url) => cb(tabId, url)),
     sendCaptureResponse: (data) => electron_1.ipcRenderer.send("browser:capture-response", data),
     sendExecuteResponse: (data) => electron_1.ipcRenderer.send("browser:execute-response", data),
     onElementPicked: (cb) => electron_1.ipcRenderer.on("browser:element-picked", (_e, payload) => cb(payload)),
