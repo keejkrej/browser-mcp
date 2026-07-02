@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getTabManager, getBrowserState, drainPickQueue, onResourceUpdate, executeOnRenderer, getMainWindow } from "./index.js";
+import { getTabManager, getBrowserState, drainPickQueue, onResourceUpdate, executeOnRenderer, getMainWindow, ensureWindow } from "./index.js";
 
 const server = new Server(
   { name: "browser-mcp", version: "0.1.0" },
@@ -100,6 +100,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "browser_open": {
+        ensureWindow();
         const url = (params.url as string) ?? undefined;
         const tab = tm.createTab(url ?? null);
         return { content: [{ type: "text", text: JSON.stringify(tab, null, 2) }] };
@@ -108,6 +109,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: "text", text: "Browser close requested. Use the app window to close." }] };
       }
       case "browser_navigate": {
+        ensureWindow();
         const url = params.url as string;
         const tabId = (params.tabId as string) ?? tm.activeTabId;
         if (!tabId) return { content: [{ type: "text", text: "No active tab" }] };
@@ -130,6 +132,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: "text", text: "Reloaded" }] };
       }
       case "browser_tab_new": {
+        ensureWindow();
         const url = (params.url as string) ?? undefined;
         const tab = tm.createTab(url ?? null);
         return { content: [{ type: "text", text: JSON.stringify(tab, null, 2) }] };

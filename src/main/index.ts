@@ -77,6 +77,11 @@ ipcMain.handle("browser:tab-title-update", async (_event, tabId: string, title: 
 
 // ---- IPC: Main -> Renderer (for MCP tools) ----
 
+export function ensureWindow() {
+  if (mainWindow === null) createWindow();
+  return mainWindow;
+}
+
 export function getMainWindow() { return mainWindow; }
 export function getTabManager() { return tabManager; }
 export function getPickQueue() { return pickQueue; }

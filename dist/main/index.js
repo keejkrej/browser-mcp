@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ensureWindow = ensureWindow;
 exports.getMainWindow = getMainWindow;
 exports.getTabManager = getTabManager;
 exports.getPickQueue = getPickQueue;
@@ -114,6 +115,11 @@ electron_1.ipcMain.handle("browser:tab-title-update", async (_event, tabId, titl
     return { ok: true };
 });
 // ---- IPC: Main -> Renderer (for MCP tools) ----
+function ensureWindow() {
+    if (mainWindow === null)
+        createWindow();
+    return mainWindow;
+}
 function getMainWindow() { return mainWindow; }
 function getTabManager() { return tabManager; }
 function getPickQueue() { return pickQueue; }

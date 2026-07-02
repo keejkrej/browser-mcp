@@ -88,6 +88,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
     try {
         switch (name) {
             case "browser_open": {
+                (0, index_js_2.ensureWindow)();
                 const url = params.url ?? undefined;
                 const tab = tm.createTab(url ?? null);
                 return { content: [{ type: "text", text: JSON.stringify(tab, null, 2) }] };
@@ -96,6 +97,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 return { content: [{ type: "text", text: "Browser close requested. Use the app window to close." }] };
             }
             case "browser_navigate": {
+                (0, index_js_2.ensureWindow)();
                 const url = params.url;
                 const tabId = params.tabId ?? tm.activeTabId;
                 if (!tabId)
@@ -122,6 +124,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 return { content: [{ type: "text", text: "Reloaded" }] };
             }
             case "browser_tab_new": {
+                (0, index_js_2.ensureWindow)();
                 const url = params.url ?? undefined;
                 const tab = tm.createTab(url ?? null);
                 return { content: [{ type: "text", text: JSON.stringify(tab, null, 2) }] };
