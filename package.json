@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic-ai/browser-mcp",
+  "name": "browser-mcp",
   "version": "0.1.0",
   "description": "Electron browser app with MCP server for element picking and annotation",
   "main": "dist/main/index.js",
